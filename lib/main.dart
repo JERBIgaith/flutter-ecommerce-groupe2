@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/theme_controller.dart';
+import 'controllers/product_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeController()),
         ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => ProductController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
@@ -52,10 +54,12 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   bool _profileLoaded = false;
+  bool _streamsStarted = false;
 
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
+    final productController = context.watch<ProductController>();
 
     return StreamBuilder(
       stream: authController.authState,
@@ -71,7 +75,7 @@ class _AuthGateState extends State<AuthGate> {
         final user = snapshot.data;
 
         if (user != null) {
-          // User is logged in
+          // User is logged in (guests included)
           if (!_profileLoaded && !user.isAnonymous) {
             // Load profile once for non-anonymous users
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,10 +83,29 @@ class _AuthGateState extends State<AuthGate> {
             });
             _profileLoaded = true;
           }
+
+          // Start product streams for signed-in users
+          if (!_streamsStarted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              productController.listenToProducts();
+              productController.listenToCategories();
+            });
+            _streamsStarted = true;
+          }
+
           return const HomeScreen();
         } else {
           // User is not logged in
           _profileLoaded = false;
+
+          // Stop product streams on logout
+          if (_streamsStarted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              productController.stopListening();
+            });
+            _streamsStarted = false;
+          }
+
           return const LoginScreen();
         }
       },
