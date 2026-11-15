@@ -5,6 +5,8 @@ import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/product_controller.dart';
+import 'controllers/favorite_controller.dart';
+import 'controllers/cart_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
@@ -27,6 +29,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeController()),
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => ProductController()),
+        ChangeNotifierProvider(create: (_) => FavoriteController()),
+        ChangeNotifierProvider(create: (_) => CartController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
@@ -60,6 +64,8 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
     final productController = context.watch<ProductController>();
+    final favoriteController = context.watch<FavoriteController>();
+    final cartController = context.watch<CartController>();
 
     return StreamBuilder(
       stream: authController.authState,
@@ -84,11 +90,17 @@ class _AuthGateState extends State<AuthGate> {
             _profileLoaded = true;
           }
 
-          // Start product streams for signed-in users
+          // Start product streams for all signed-in users
           if (!_streamsStarted) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               productController.listenToProducts();
               productController.listenToCategories();
+              
+              // Start favorite and cart streams only for non-anonymous users
+              if (!user.isAnonymous) {
+                favoriteController.listenToFavorites(user.uid);
+                cartController.listenToCart(user.uid);
+              }
             });
             _streamsStarted = true;
           }
@@ -98,10 +110,12 @@ class _AuthGateState extends State<AuthGate> {
           // User is not logged in
           _profileLoaded = false;
 
-          // Stop product streams on logout
+          // Stop all streams on logout
           if (_streamsStarted) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               productController.stopListening();
+              favoriteController.stopListening();
+              cartController.stopListening();
             });
             _streamsStarted = false;
           }

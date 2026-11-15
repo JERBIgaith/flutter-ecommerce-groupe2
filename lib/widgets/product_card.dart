@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/product_model.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/favorite_controller.dart';
 import '../utils/constants.dart';
 import 'app_network_image.dart';
+import 'guest_guard.dart';
 
 /// Product card widget for grid display
 class ProductCard extends StatelessWidget {
@@ -16,6 +20,10 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authController = context.watch<AuthController>();
+    final favoriteController = context.watch<FavoriteController>();
+    final isFavorite = favoriteController.isFavorite(product.id);
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -23,15 +31,63 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product image
+            // Product image with favorite button
             Expanded(
               flex: 3,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: AppNetworkImage(
-                  url: product.imageUrl,
-                  fit: BoxFit.cover,
-                ),
+              child: Stack(
+                children: [
+                  AspectRatio(
+                    aspectRatio: 1,
+                    child: AppNetworkImage(
+                      url: product.imageUrl,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  // Favorite button
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Material(
+                      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite
+                              ? Theme.of(context).colorScheme.error
+                              : null,
+                        ),
+                        onPressed: () async {
+                          final isGuest = authController.isGuest;
+                          final allowed = await GuestGuard.check(context, isGuest: isGuest);
+                          if (!allowed) return;
+
+                          final userId = authController.profile?.uid;
+                          if (userId == null) return;
+
+                          try {
+                            await favoriteController.toggleFavorite(
+                              userId,
+                              product.id,
+                              product.name,
+                              product.price,
+                              product.imageUrl,
+                            );
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to update favorite: $e'),
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 

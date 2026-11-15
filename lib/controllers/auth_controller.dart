@@ -38,6 +38,18 @@ class AuthController extends ChangeNotifier {
   /// Stream of Firebase Auth state changes
   Stream<User?> get authState => _authService.authStateChanges;
 
+  /// Check if current user is a guest (anonymous)
+  bool get isGuest {
+    final user = _authService.currentUser;
+    return user != null && user.isAnonymous;
+  }
+
+  /// Check if current user is signed in (non-anonymous)
+  bool get isSignedInUser {
+    final user = _authService.currentUser;
+    return user != null && !user.isAnonymous;
+  }
+
   /// Register new user
   Future<bool> register(String name, String email, String password) async {
     _setLoading(true);
