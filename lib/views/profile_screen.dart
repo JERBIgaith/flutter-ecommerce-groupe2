@@ -9,6 +9,11 @@ class ProfileScreen extends StatelessWidget {
   Future<void> _handleLogout(BuildContext context) async {
     final authController = context.read<AuthController>();
     await authController.logout();
+    
+    if (!context.mounted) return;
+    
+    // Pop back to AuthGate to show LoginScreen
+    Navigator.of(context).pop();
   }
 
   @override

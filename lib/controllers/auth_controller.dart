@@ -54,10 +54,12 @@ class AuthController extends ChangeNotifier {
       _setLoading(false);
       return false;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during register: ${e.code}');
       _setError(_getAuthErrorMessage(e));
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('Error during register: $e');
       _setError('An unexpected error occurred');
       _setLoading(false);
       return false;
@@ -80,10 +82,12 @@ class AuthController extends ChangeNotifier {
       _setLoading(false);
       return false;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during login: ${e.code}');
       _setError(_getAuthErrorMessage(e));
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('Error during login: $e');
       _setError('An unexpected error occurred');
       _setLoading(false);
       return false;
@@ -106,10 +110,12 @@ class AuthController extends ChangeNotifier {
       _setLoading(false);
       return false;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during Google sign in: ${e.code}');
       _setError(_getAuthErrorMessage(e));
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('Error during Google sign in: $e');
       _setError('Google sign in failed');
       _setLoading(false);
       return false;
@@ -131,10 +137,12 @@ class AuthController extends ChangeNotifier {
       _setLoading(false);
       return false;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during anonymous sign in: ${e.code}');
       _setError(_getAuthErrorMessage(e));
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('Error during anonymous sign in: $e');
       _setError('An unexpected error occurred');
       _setLoading(false);
       return false;
@@ -158,10 +166,12 @@ class AuthController extends ChangeNotifier {
       _setLoading(false);
       return true;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during password reset: ${e.code}');
       _setError(_getAuthErrorMessage(e));
       _setLoading(false);
       return false;
     } catch (e) {
+      debugPrint('Error during password reset: $e');
       _setError('Failed to send reset email');
       _setLoading(false);
       return false;
@@ -200,10 +210,16 @@ class AuthController extends ChangeNotifier {
 
   /// Logout current user
   Future<void> logout() async {
-    await _authService.logout();
-    _profile = null;
-    _clearError();
-    notifyListeners();
+    try {
+      await _authService.logout();
+      _profile = null;
+      _lastPasswordResetTime = null;
+      _clearError();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error during logout: $e');
+      _setError('Logout failed');
+    }
   }
 
   /// Load user profile from Firestore
@@ -215,6 +231,7 @@ class AuthController extends ChangeNotifier {
       _profile = await _authService.getProfile(user.uid);
       notifyListeners();
     } catch (e) {
+      debugPrint('Error loading profile: $e');
       _setError('Failed to load profile');
     }
   }
