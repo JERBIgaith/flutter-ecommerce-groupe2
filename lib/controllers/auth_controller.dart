@@ -1,19 +1,39 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
 /// Authentication controller managing auth state and user profile
 class AuthController extends ChangeNotifier {
+  static const String _rememberedEmailKey = 'remembered_email';
+  static const int _forgotPasswordCooldownSeconds = 60;
+
   final AuthService _authService = AuthService();
 
   bool _isLoading = false;
   String? _errorMessage;
   UserModel? _profile;
+  DateTime? _lastPasswordResetTime;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   UserModel? get profile => _profile;
+
+  /// Check if password reset can be sent (60 second cooldown)
+  bool get canSendPasswordReset {
+    if (_lastPasswordResetTime == null) return true;
+    final elapsed = DateTime.now().difference(_lastPasswordResetTime!);
+    return elapsed.inSeconds >= _forgotPasswordCooldownSeconds;
+  }
+
+  /// Get remaining cooldown seconds
+  int get forgotPasswordCooldownSeconds {
+    if (_lastPasswordResetTime == null) return 0;
+    final elapsed = DateTime.now().difference(_lastPasswordResetTime!);
+    final remaining = _forgotPasswordCooldownSeconds - elapsed.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
 
   /// Stream of Firebase Auth state changes
   Stream<User?> get authState => _authService.authStateChanges;
@@ -70,6 +90,114 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final user = await _authService.signInWithGoogle();
+      if (user != null) {
+        await loadProfile();
+        _setLoading(false);
+        return true;
+      }
+      _setError('Google sign in cancelled');
+      _setLoading(false);
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _setError(_getAuthErrorMessage(e));
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _setError('Google sign in failed');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Sign in anonymously as guest
+  Future<bool> signInAnonymously() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final user = await _authService.signInAnonymously();
+      if (user != null) {
+        _setLoading(false);
+        return true;
+      }
+      _setError('Guest sign in failed');
+      _setLoading(false);
+      return false;
+    } on FirebaseAuthException catch (e) {
+      _setError(_getAuthErrorMessage(e));
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _setError('An unexpected error occurred');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Send password reset email with cooldown
+  Future<bool> sendPasswordResetEmail(String email) async {
+    if (!canSendPasswordReset) {
+      _setError(
+          'Please wait $forgotPasswordCooldownSeconds seconds before trying again');
+      return false;
+    }
+
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      _lastPasswordResetTime = DateTime.now();
+      _setLoading(false);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      _setError(_getAuthErrorMessage(e));
+      _setLoading(false);
+      return false;
+    } catch (e) {
+      _setError('Failed to send reset email');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  /// Save email for Remember Me
+  Future<void> saveRememberedEmail(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_rememberedEmailKey, email.trim().toLowerCase());
+    } catch (e) {
+      // Failed to save, ignore
+    }
+  }
+
+  /// Load remembered email
+  Future<String?> loadRememberedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_rememberedEmailKey);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Clear remembered email
+  Future<void> clearRememberedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_rememberedEmailKey);
+    } catch (e) {
+      // Failed to clear, ignore
+    }
+  }
+
   /// Logout current user
   Future<void> logout() async {
     await _authService.logout();
@@ -81,7 +209,7 @@ class AuthController extends ChangeNotifier {
   /// Load user profile from Firestore
   Future<void> loadProfile() async {
     final user = _authService.currentUser;
-    if (user == null) return;
+    if (user == null || user.isAnonymous) return;
 
     try {
       _profile = await _authService.getProfile(user.uid);
@@ -131,6 +259,8 @@ class AuthController extends ChangeNotifier {
   /// Convert Firebase Auth errors to user-friendly messages
   String _getAuthErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
+      case 'invalid-credential':
+        return 'Invalid email or password';
       case 'user-not-found':
         return 'No user found with this email';
       case 'wrong-password':
@@ -140,9 +270,7 @@ class AuthController extends ChangeNotifier {
       case 'invalid-email':
         return 'Invalid email address';
       case 'weak-password':
-        return 'Password is too weak';
-      case 'operation-not-allowed':
-        return 'Operation not allowed';
+        return 'Password is too weak (minimum 6 characters)';
       case 'user-disabled':
         return 'User account has been disabled';
       case 'too-many-requests':
@@ -150,7 +278,7 @@ class AuthController extends ChangeNotifier {
       case 'network-request-failed':
         return 'Network error. Please check your connection';
       default:
-        return 'Authentication error: ${e.message ?? 'Unknown error'}';
+        return e.message ?? 'Authentication error occurred';
     }
   }
 }

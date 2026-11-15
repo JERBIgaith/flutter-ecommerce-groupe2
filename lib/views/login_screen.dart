@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/theme_controller.dart';
 import '../utils/validators.dart';
 import 'register_screen.dart';
 
@@ -16,6 +17,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
 
   @override
   void dispose() {
@@ -24,38 +32,122 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  /// Load remembered email if exists
+  Future<void> _loadRememberedEmail() async {
+    final authController = context.read<AuthController>();
+    final email = await authController.loadRememberedEmail();
+    if (email != null) {
+      setState(() {
+        _emailController.text = email;
+        _rememberMe = true;
+      });
+    }
+  }
+
   /// Handle login button press
   Future<void> _handleLogin() async {
-    // Validate form
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     final authController = context.read<AuthController>();
-    
-    // Attempt login
+
+    // Handle Remember Me
+    if (_rememberMe) {
+      await authController.saveRememberedEmail(_emailController.text);
+    } else {
+      await authController.clearRememberedEmail();
+    }
+
     final success = await authController.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
 
-    // Check if widget is still mounted before showing SnackBar
     if (!mounted) return;
 
-    // Show error message if login failed
     if (!success && authController.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authController.errorMessage!),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showErrorSnackBar(authController.errorMessage!);
     }
+  }
+
+  /// Handle Google sign in
+  Future<void> _handleGoogleSignIn() async {
+    final authController = context.read<AuthController>();
+    final success = await authController.signInWithGoogle();
+
+    if (!mounted) return;
+
+    if (!success && authController.errorMessage != null) {
+      _showErrorSnackBar(authController.errorMessage!);
+    }
+  }
+
+  /// Handle guest sign in
+  Future<void> _handleGuestSignIn() async {
+    final authController = context.read<AuthController>();
+    final success = await authController.signInAnonymously();
+
+    if (!mounted) return;
+
+    if (!success && authController.errorMessage != null) {
+      _showErrorSnackBar(authController.errorMessage!);
+    }
+  }
+
+  /// Handle forgot password
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+
+    // Validate email
+    final emailError = Validators.email(email);
+    if (emailError != null) {
+      _showErrorSnackBar(emailError);
+      return;
+    }
+
+    final authController = context.read<AuthController>();
+
+    if (!authController.canSendPasswordReset) {
+      _showErrorSnackBar(
+        'Please wait ${authController.forgotPasswordCooldownSeconds}s before trying again',
+      );
+      return;
+    }
+
+    final success = await authController.sendPasswordResetEmail(email);
+
+    if (!mounted) return;
+
+    if (success) {
+      _showSuccessSnackBar('If an account exists, a reset email has been sent');
+    } else if (authController.errorMessage != null) {
+      _showErrorSnackBar(authController.errorMessage!);
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
+    final themeController = context.watch<ThemeController>();
 
     return Scaffold(
       body: SafeArea(
@@ -68,18 +160,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App title
-
+                  // Theme toggle
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(
+                        Icons.brightness_2_outlined,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      Switch(
+                        value: themeController.themeMode == ThemeMode.dark,
+                        onChanged: (value) {
+                          themeController.setThemeMode(
+                            value ? ThemeMode.dark : ThemeMode.light,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
+
+                  // App title
                   Text(
-                    'Welcome Back',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    'StyleHub',
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Login to continue shopping',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    'Welcome Back',
+                    style: Theme.of(context).textTheme.titleLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
@@ -91,21 +205,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
                     ),
                     validator: Validators.email,
                     enabled: !authController.isLoading,
                   ),
                   const SizedBox(height: 16),
 
-                  // Password field with visibility toggle
+                  // Password field
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outlined),
-                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
@@ -122,9 +234,41 @@ class _LoginScreenState extends State<LoginScreen> {
                     validator: Validators.password,
                     enabled: !authController.isLoading,
                   ),
+                  const SizedBox(height: 8),
+
+                  // Remember Me and Forgot Password
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            onChanged: authController.isLoading
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _rememberMe = value ?? false;
+                                    });
+                                  },
+                          ),
+                          Text(
+                            'Remember Me',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: authController.isLoading
+                            ? null
+                            : _handleForgotPassword,
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 24),
 
-                  // Login button with loading indicator
+                  // Login button
                   FilledButton(
                     onPressed: authController.isLoading ? null : _handleLogin,
                     child: authController.isLoading
@@ -133,26 +277,61 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : const Text('Login'),
                   ),
                   const SizedBox(height: 16),
 
-                  // Link to register screen
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Theme.of(context).dividerColor)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'OR',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Theme.of(context).dividerColor)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google Sign In button
+                  OutlinedButton.icon(
+                    onPressed: authController.isLoading ? null : _handleGoogleSignIn,
+                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    label: const Text('Continue with Google'),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Guest button
+                  OutlinedButton.icon(
+                    onPressed: authController.isLoading ? null : _handleGuestSignIn,
+                    icon: const Icon(Icons.person_outline),
+                    label: const Text('Browse as Guest'),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Register link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account? "),
+                      Text(
+                        "Don't have an account? ",
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
                       TextButton(
                         onPressed: authController.isLoading
                             ? null
                             : () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        const RegisterScreen(),
+                                    builder: (context) => const RegisterScreen(),
                                   ),
                                 );
                               },

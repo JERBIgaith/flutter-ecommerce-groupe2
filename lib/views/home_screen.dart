@@ -6,12 +6,6 @@ import 'profile_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  /// Handle logout button press
-  Future<void> _handleLogout(BuildContext context) async {
-    final authController = context.read<AuthController>();
-    await authController.logout();
-  }
-
   @override
   Widget build(BuildContext context) {
     final authController = context.watch<AuthController>();
@@ -19,9 +13,8 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: const Text('StyleHub'),
         actions: [
-          // Profile button
           IconButton(
             icon: const Icon(Icons.person_outlined),
             onPressed: () {
@@ -32,11 +25,6 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          // Logout button
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _handleLogout(context),
-          ),
         ],
       ),
       body: Center(
@@ -45,82 +33,22 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Welcome icon
               Icon(
-                Icons.shopping_bag,
+                Icons.shopping_bag_outlined,
                 size: 100,
-                color: Theme.of(context).primaryColor,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 24),
-
-              // Welcome message with user's name
               Text(
-                'Welcome, ${profile?.name ?? 'User'}!',
+                'Welcome${profile?.name != null ? ', ${profile!.name}' : ''}',
                 style: Theme.of(context).textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
-                'E-Commerce App',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).primaryColor,
-                    ),
+                'Home screen placeholder',
+                style: Theme.of(context).textTheme.bodyLarge,
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 48),
-
-              // Placeholder message
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-
-                      const SizedBox(height: 16),
-                      Text(
-                        'team khaliha 3la alh!',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'خمسة وخميس خمسة وخميس.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Action buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Profile button
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const ProfileScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.person),
-                    label: const Text('View Profile'),
-                  ),
-                  const SizedBox(width: 16),
-
-                  // Logout button
-                  OutlinedButton.icon(
-                    onPressed: () => _handleLogout(context),
-                    icon: const Icon(Icons.logout),
-                    label: const Text('Logout'),
-                  ),
-                ],
               ),
             ],
           ),

@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isNotAnonymous() {
+      return request.auth != null && 
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    function isAdmin() {
+      return isNotAnonymous() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Products: read if signed in (guests included), write only if admin
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Categories: read if signed in (guests included), write only if admin
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users: read and write by non-anonymous owner, on create role must be 'user',
+    // on update role must not change, isAdmin() can read any user but cannot write others
+    match /users/{uid} {
+      allow read: if (isNotAnonymous() && request.auth.uid == uid) || isAdmin();
+      allow create: if isNotAnonymous() && 
+                       request.auth.uid == uid && 
+                       request.resource.data.role == 'user';
+      allow update: if isNotAnonymous() && 
+                       request.auth.uid == uid && 
+                       request.resource.data.role == resource.data.role;
+
+      // Cart: owner only, non-anonymous
+      match /cart/{cartId} {
+        allow read, write: if isNotAnonymous() && request.auth.uid == uid;
+      }
+
+      // Favorites: owner only, non-anonymous
+      match /favorites/{favoriteId} {
+        allow read, write: if isNotAnonymous() && request.auth.uid == uid;
+      }
+    }
+
+    // Orders: create by non-anonymous owner with userId == auth.uid,
+    // read own orders, isAdmin() can read all and update only status
+    match /orders/{orderId} {
+      allow create: if isNotAnonymous() && 
+                       request.auth.uid == request.resource.data.userId;
+      allow read: if (isNotAnonymous() && request.auth.uid == resource.data.userId) || 
+                     isAdmin();
+      allow update: if isAdmin() && 
+                       request.resource.data.keys().hasOnly(['status']) &&
+                       request.resource.data.status in ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    }
+
+    // Everything else denied
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
