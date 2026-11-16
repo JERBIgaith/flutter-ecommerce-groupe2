@@ -24,4 +24,17 @@ class AppColors {
   // Universal colors
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
+
+  // Status colors
+  static const Color statusPending = Color(0xFFF59E0B);
+  static const Color statusConfirmed = Color(0xFF3B82F6);
+  static const Color statusShipped = Color(0xFF8B5CF6);
+  static const Color statusDelivered = Color(0xFF10B981);
+  static const Color statusCancelled = Color(0xFFEF4444);
+
+  // Payment status colors
+  static const Color paymentUnpaid = Color(0xFFF59E0B);
+  static const Color paymentPending = Color(0xFF3B82F6);
+  static const Color paymentPaid = Color(0xFF10B981);
+  static const Color paymentFailed = Color(0xFFEF4444);
 }

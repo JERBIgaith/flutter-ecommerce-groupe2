@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/theme_controller.dart';
 import 'register_screen.dart';
+import 'orders_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -296,6 +297,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Orders card
+              Card(
+                child: ListTile(
+                  leading: Icon(
+                    Icons.shopping_bag_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  title: const Text('My orders'),
+                  subtitle: const Text('View and track your orders'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const OrdersScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),

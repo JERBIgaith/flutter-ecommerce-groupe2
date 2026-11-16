@@ -7,6 +7,7 @@ import 'controllers/theme_controller.dart';
 import 'controllers/product_controller.dart';
 import 'controllers/favorite_controller.dart';
 import 'controllers/cart_controller.dart';
+import 'controllers/order_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProductController()),
         ChangeNotifierProvider(create: (_) => FavoriteController()),
         ChangeNotifierProvider(create: (_) => CartController()),
+        ChangeNotifierProvider(create: (_) => OrderController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
@@ -66,6 +68,7 @@ class _AuthGateState extends State<AuthGate> {
     final productController = context.watch<ProductController>();
     final favoriteController = context.watch<FavoriteController>();
     final cartController = context.watch<CartController>();
+    final orderController = context.watch<OrderController>();
 
     return StreamBuilder(
       stream: authController.authState,
@@ -96,10 +99,11 @@ class _AuthGateState extends State<AuthGate> {
               productController.listenToProducts();
               productController.listenToCategories();
               
-              // Start favorite and cart streams only for non-anonymous users
+              // Start favorite, cart, and order streams only for non-anonymous users
               if (!user.isAnonymous) {
                 favoriteController.listenToFavorites(user.uid);
                 cartController.listenToCart(user.uid);
+                orderController.listenToOrders(user.uid);
               }
             });
             _streamsStarted = true;
@@ -116,6 +120,7 @@ class _AuthGateState extends State<AuthGate> {
               productController.stopListening();
               favoriteController.stopListening();
               cartController.stopListening();
+              orderController.stopListening();
             });
             _streamsStarted = false;
           }
