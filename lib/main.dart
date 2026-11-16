@@ -8,9 +8,11 @@ import 'controllers/product_controller.dart';
 import 'controllers/favorite_controller.dart';
 import 'controllers/cart_controller.dart';
 import 'controllers/order_controller.dart';
+import 'controllers/admin_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
+import 'views/admin/admin_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +35,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FavoriteController()),
         ChangeNotifierProvider(create: (_) => CartController()),
         ChangeNotifierProvider(create: (_) => OrderController()),
+        ChangeNotifierProvider(create: (_) => AdminController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
@@ -50,7 +53,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// AuthGate widget that shows LoginScreen or HomeScreen based on auth state
+/// AuthGate widget routing by user role after sign-in
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -59,8 +62,9 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  bool _profileLoaded = false;
+  bool _profileLoadingTriggered = false;
   bool _streamsStarted = false;
+  String? _lastUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +73,7 @@ class _AuthGateState extends State<AuthGate> {
     final favoriteController = context.watch<FavoriteController>();
     final cartController = context.watch<CartController>();
     final orderController = context.watch<OrderController>();
+    final adminController = context.watch<AdminController>();
 
     return StreamBuilder(
       stream: authController.authState,
@@ -83,47 +88,86 @@ class _AuthGateState extends State<AuthGate> {
 
         final user = snapshot.data;
 
+        // Reset tracking flags if user changes
+        if (user?.uid != _lastUserId) {
+          _profileLoadingTriggered = false;
+          _streamsStarted = false;
+          _lastUserId = user?.uid;
+        }
+
         if (user != null) {
-          // User is logged in (guests included)
-          if (!_profileLoaded && !user.isAnonymous) {
-            // Load profile once for non-anonymous users
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              authController.loadProfile();
-            });
-            _profileLoaded = true;
-          }
+          // Logged in user or guest
+          if (!user.isAnonymous) {
+            final profile = authController.profile;
 
-          // Start product streams for all signed-in users
-          if (!_streamsStarted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              productController.listenToProducts();
-              productController.listenToCategories();
-              
-              // Start favorite, cart, and order streams only for non-anonymous users
-              if (!user.isAnonymous) {
-                favoriteController.listenToFavorites(user.uid);
-                cartController.listenToCart(user.uid);
-                orderController.listenToOrders(user.uid);
+            // Profile loading state
+            if (profile == null) {
+              if (!_profileLoadingTriggered) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  authController.loadProfile();
+                });
+                _profileLoadingTriggered = true;
               }
-            });
-            _streamsStarted = true;
+              return const Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            // Role-based routing
+            final isAdmin = profile.isAdmin;
+
+            if (isAdmin) {
+              // Admin user
+              if (!_streamsStarted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  productController.listenToProducts();
+                  productController.listenToCategories();
+                  adminController.listenToUsers();
+                  adminController.listenToAllOrders();
+                });
+                _streamsStarted = true;
+              }
+              return const AdminHomeScreen();
+            } else {
+              // Standard registered user
+              if (!_streamsStarted) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  productController.listenToProducts();
+                  productController.listenToCategories();
+                  favoriteController.listenToFavorites(user.uid);
+                  cartController.listenToCart(user.uid);
+                  orderController.listenToOrders(user.uid);
+                });
+                _streamsStarted = true;
+              }
+              return const HomeScreen();
+            }
+          } else {
+            // Anonymous Guest User
+            if (!_streamsStarted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                productController.listenToProducts();
+                productController.listenToCategories();
+              });
+              _streamsStarted = true;
+            }
+            return const HomeScreen();
           }
-
-          return const HomeScreen();
         } else {
-          // User is not logged in
-          _profileLoaded = false;
-
-          // Stop all streams on logout
+          // Logged out
           if (_streamsStarted) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               productController.stopListening();
               favoriteController.stopListening();
               cartController.stopListening();
               orderController.stopListening();
+              adminController.stopListening();
             });
             _streamsStarted = false;
           }
+          _profileLoadingTriggered = false;
 
           return const LoginScreen();
         }
