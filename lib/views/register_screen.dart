@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
+import '../utils/app_colors.dart';
 import '../utils/validators.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -56,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authController.errorMessage!),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -189,12 +190,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed:
                         authController.isLoading ? null : _handleRegister,
                     child: authController.isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
                         : const Text('Register'),

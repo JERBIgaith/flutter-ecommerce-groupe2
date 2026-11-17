@@ -194,16 +194,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     radius: 12,
                     backgroundColor: color,
                     child: isCompleted
-                        ? const Icon(
+                        ? Icon(
                             Icons.check,
                             size: 14,
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                           )
                         : Text(
                             '${index + 1}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                   ),

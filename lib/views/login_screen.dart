@@ -272,13 +272,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   FilledButton(
                     onPressed: authController.isLoading ? null : _handleLogin,
                     child: authController.isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                                  AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.onPrimary),
                             ),
                           )
                         : const Text('Login'),

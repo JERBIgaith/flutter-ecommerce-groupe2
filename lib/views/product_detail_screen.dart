@@ -7,6 +7,7 @@ import '../controllers/cart_controller.dart';
 import '../models/product_model.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/guest_guard.dart';
+import '../utils/app_colors.dart';
 import '../utils/constants.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               IconButton(
                 icon: Icon(
                   isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite ? Colors.red : null,
+                  color: isFavorite ? AppColors.error : null,
                 ),
                 onPressed: () async {
                   final scaffoldMessenger = ScaffoldMessenger.of(context);

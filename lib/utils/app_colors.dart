@@ -37,4 +37,8 @@ class AppColors {
   static const Color paymentPending = Color(0xFF3B82F6);
   static const Color paymentPaid = Color(0xFF10B981);
   static const Color paymentFailed = Color(0xFFEF4444);
+
+  // Image overlay colors
+  static const Color onImage = Colors.white;
+  static const Color onImageMuted = Color(0xB3FFFFFF);
 }

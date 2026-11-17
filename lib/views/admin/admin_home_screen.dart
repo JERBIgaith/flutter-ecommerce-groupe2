@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/theme_controller.dart';
+import '../../utils/app_colors.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_products_screen.dart';
 import 'admin_categories_screen.dart';
@@ -121,9 +122,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, color: Colors.red),
+                    Icon(Icons.logout, color: AppColors.error),
                     SizedBox(width: 8),
-                    Text('Logout', style: TextStyle(color: Colors.red)),
+                    Text('Logout', style: TextStyle(color: AppColors.error)),
                   ],
                 ),
               ),

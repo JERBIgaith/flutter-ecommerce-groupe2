@@ -62,7 +62,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     child: Text(
                       _getActiveFilterCount(productController).toString(),
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.onImage,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -464,7 +464,7 @@ class _ProductDrawerState extends State<_ProductDrawer> {
                 Text(
                   'StyleHub',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.onImage,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
@@ -473,7 +473,7 @@ class _ProductDrawerState extends State<_ProductDrawer> {
                 Text(
                   'Shop by category',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: AppColors.onImageMuted,
                     fontSize: 14,
                   ),
                 ),
