@@ -121,4 +121,16 @@ class Validators {
     }
     return null;
   }
+
+  /// Validates comment text (trimmed, 1 to 500 characters)
+  static String? commentText(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Comment text cannot be empty';
+    }
+    final trimmed = value.trim();
+    if (trimmed.length > 500) {
+      return 'Comment cannot exceed 500 characters';
+    }
+    return null;
+  }
 }

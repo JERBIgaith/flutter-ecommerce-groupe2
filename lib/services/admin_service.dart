@@ -72,9 +72,12 @@ class AdminService {
     });
   }
 
-  /// Delete a product
+  /// Delete a product (and all its subcollection comments first)
   Future<void> deleteProduct(String id) async {
-    await _firestore.collection('products').doc(id).delete();
+    final operations = <void Function(WriteBatch batch)>[];
+    final productRef = _firestore.collection('products').doc(id);
+    await _addDeleteProductAndCommentsOperations(productRef, operations);
+    await _commitInChunks(operations);
   }
 
   /// Create a new category or subcategory with duplicate check
@@ -190,7 +193,7 @@ class AdminService {
   }
 
   /// Delete category with cascade rule
-  /// Deletes products first, then subcategories, then category document LAST.
+  /// Deletes product comments first, products next, subcategories third, and category document LAST.
   /// Returns the count of deleted products.
   Future<int> deleteCategory(String categoryId) async {
     final catDoc = await _firestore.collection('categories').doc(categoryId).get();
@@ -216,9 +219,9 @@ class AdminService {
 
       deletedProductsCount = productSnapshot.docs.length;
 
-      // 1. Delete products first
+      // 1. Delete product comments and products first
       for (var doc in productSnapshot.docs) {
-        operations.add((batch) => batch.delete(doc.reference));
+        await _addDeleteProductAndCommentsOperations(doc.reference, operations);
       }
 
       // 2. Delete subcategory document LAST
@@ -237,9 +240,9 @@ class AdminService {
 
       deletedProductsCount = productSnapshot.docs.length;
 
-      // 1. Delete products first
+      // 1. Delete product comments and products first
       for (var doc in productSnapshot.docs) {
-        operations.add((batch) => batch.delete(doc.reference));
+        await _addDeleteProductAndCommentsOperations(doc.reference, operations);
       }
 
       // 2. Delete subcategories
@@ -254,6 +257,18 @@ class AdminService {
     await _commitInChunks(operations);
 
     return deletedProductsCount;
+  }
+
+  /// Helper to queue operations for deleting a product and all its comments
+  Future<void> _addDeleteProductAndCommentsOperations(
+    DocumentReference productRef,
+    List<void Function(WriteBatch batch)> operations,
+  ) async {
+    final commentsSnapshot = await productRef.collection('comments').get();
+    for (var commentDoc in commentsSnapshot.docs) {
+      operations.add((batch) => batch.delete(commentDoc.reference));
+    }
+    operations.add((batch) => batch.delete(productRef));
   }
 
   /// Count products in a top-level category

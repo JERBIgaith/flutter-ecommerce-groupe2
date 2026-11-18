@@ -7,6 +7,7 @@ import '../../utils/app_colors.dart';
 import '../../utils/constants.dart';
 import '../../widgets/app_network_image.dart';
 import 'admin_product_form_screen.dart';
+import 'admin_product_comments_screen.dart';
 
 /// Admin Products list screen with search, category filtering, and edit/delete actions
 class AdminProductsScreen extends StatefulWidget {
@@ -271,6 +272,21 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.comment_outlined),
+                                tooltip: 'Comments',
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          AdminProductCommentsScreen(
+                                        productId: product.id,
+                                        productName: product.name,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.edit_outlined),
