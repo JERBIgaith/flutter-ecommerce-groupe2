@@ -7,6 +7,7 @@ import 'admin_dashboard_screen.dart';
 import 'admin_products_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_orders_map_screen.dart';
 import 'admin_users_screen.dart';
 
 /// Admin main navigation container with NavigationBar and shared options menu
@@ -51,6 +52,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         actions: [
+          if (_selectedIndex == 3)
+            IconButton(
+              icon: const Icon(Icons.map_outlined),
+              tooltip: 'Delivery Map',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AdminOrdersMapScreen(),
+                  ),
+                );
+              },
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) async {

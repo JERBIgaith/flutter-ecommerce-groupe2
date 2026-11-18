@@ -65,6 +65,8 @@ class OrderController extends ChangeNotifier {
     required String paymentMethod,
     required String deliveryAddress,
     required String phone,
+    double? deliveryLat,
+    double? deliveryLng,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -78,6 +80,8 @@ class OrderController extends ChangeNotifier {
         paymentMethod: paymentMethod,
         deliveryAddress: deliveryAddress,
         phone: phone,
+        deliveryLat: deliveryLat,
+        deliveryLng: deliveryLng,
       );
       return newOrder;
     } catch (e) {

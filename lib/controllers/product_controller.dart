@@ -25,6 +25,10 @@ class ProductController extends ChangeNotifier {
   StreamSubscription? _productsSubscription;
   StreamSubscription? _categoriesSubscription;
   Timer? _debounceTimer;
+  Timer? _productsRetryTimer;
+  Timer? _categoriesRetryTimer;
+  bool _hasRetriedProducts = false;
+  bool _hasRetriedCategories = false;
 
   // Getters
   List<ProductModel> get allProducts => _allProducts;
@@ -156,8 +160,14 @@ class ProductController extends ChangeNotifier {
     return result;
   }
 
-  /// Start listening to products
-  void listenToProducts() {
+  /// Start listening to products with recovery retry
+  void listenToProducts({bool isRetry = false}) {
+    if (!isRetry) {
+      _hasRetriedProducts = false;
+      _productsRetryTimer?.cancel();
+    }
+    _productsSubscription?.cancel();
+
     _isLoading = true;
     notifyListeners();
 
@@ -172,13 +182,29 @@ class ProductController extends ChangeNotifier {
         debugPrint('Error streaming products: $error');
         _errorMessage = 'Failed to load products';
         _isLoading = false;
+        _productsSubscription?.cancel();
+        _productsSubscription = null;
         notifyListeners();
+
+        if (!_hasRetriedProducts) {
+          _hasRetriedProducts = true;
+          _productsRetryTimer?.cancel();
+          _productsRetryTimer = Timer(const Duration(seconds: 2), () {
+            listenToProducts(isRetry: true);
+          });
+        }
       },
     );
   }
 
-  /// Start listening to categories
-  void listenToCategories() {
+  /// Start listening to categories with recovery retry
+  void listenToCategories({bool isRetry = false}) {
+    if (!isRetry) {
+      _hasRetriedCategories = false;
+      _categoriesRetryTimer?.cancel();
+    }
+    _categoriesSubscription?.cancel();
+
     _categoriesSubscription = _productService.streamCategories().listen(
       (categories) {
         _allCategories = categories;
@@ -186,6 +212,18 @@ class ProductController extends ChangeNotifier {
       },
       onError: (error) {
         debugPrint('Error streaming categories: $error');
+        _errorMessage = 'Failed to load categories';
+        _categoriesSubscription?.cancel();
+        _categoriesSubscription = null;
+        notifyListeners();
+
+        if (!_hasRetriedCategories) {
+          _hasRetriedCategories = true;
+          _categoriesRetryTimer?.cancel();
+          _categoriesRetryTimer = Timer(const Duration(seconds: 2), () {
+            listenToCategories(isRetry: true);
+          });
+        }
       },
     );
   }
@@ -194,7 +232,13 @@ class ProductController extends ChangeNotifier {
   void stopListening() {
     _productsSubscription?.cancel();
     _categoriesSubscription?.cancel();
+    _productsSubscription = null;
+    _categoriesSubscription = null;
+    _productsRetryTimer?.cancel();
+    _categoriesRetryTimer?.cancel();
     _debounceTimer?.cancel();
+    _hasRetriedProducts = false;
+    _hasRetriedCategories = false;
   }
 
   /// Select a category

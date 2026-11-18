@@ -26,6 +26,8 @@ class OrderService {
     required String paymentMethod,
     required String deliveryAddress,
     required String phone,
+    double? deliveryLat,
+    double? deliveryLng,
   }) async {
     final batch = _firestore.batch();
     final orderRef = _firestore.collection('orders').doc();
@@ -41,6 +43,8 @@ class OrderService {
       'paymentReference': null,
       'deliveryAddress': deliveryAddress,
       'phone': phone,
+      'deliveryLat': deliveryLat,
+      'deliveryLng': deliveryLng,
     };
 
     batch.set(orderRef, orderData);
@@ -70,6 +74,8 @@ class OrderService {
       paymentReference: null,
       deliveryAddress: deliveryAddress,
       phone: phone,
+      deliveryLat: deliveryLat,
+      deliveryLng: deliveryLng,
     );
   }
 

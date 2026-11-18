@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/order_controller.dart';
 import '../models/order_model.dart';
@@ -324,6 +326,67 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       title: const Text('Phone Number'),
                       subtitle: Text(order.phone),
                     ),
+                    if (order.hasLocation) ...[
+                      const Divider(height: 24),
+                      Text(
+                        'Delivery Location Pin',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Coordinates: ${order.deliveryLat!.toStringAsFixed(4)}, ${order.deliveryLng!.toStringAsFixed(4)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: SizedBox(
+                          height: 140,
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(
+                                order.deliveryLat!,
+                                order.deliveryLng!,
+                              ),
+                              initialZoom: 14.0,
+                              interactionOptions: const InteractionOptions(
+                                flags: InteractiveFlag.none,
+                              ),
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'fl',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(
+                                      order.deliveryLat!,
+                                      order.deliveryLng!,
+                                    ),
+                                    width: 36,
+                                    height: 36,
+                                    child: Icon(
+                                      Icons.location_on,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      size: 36,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SimpleAttributionWidget(
+                                source: const Text(
+                                  'OpenStreetMap contributors',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'controllers/auth_controller.dart';
@@ -10,6 +11,7 @@ import 'controllers/cart_controller.dart';
 import 'controllers/order_controller.dart';
 import 'controllers/admin_controller.dart';
 import 'controllers/comment_controller.dart';
+import 'controllers/location_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/login_screen.dart';
 import 'views/home_screen.dart';
@@ -38,6 +40,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrderController()),
         ChangeNotifierProvider(create: (_) => AdminController()),
         ChangeNotifierProvider(create: (_) => CommentController()),
+        ChangeNotifierProvider(create: (_) => LocationController()),
       ],
       child: Consumer<ThemeController>(
         builder: (context, themeController, _) {
@@ -123,7 +126,8 @@ class _AuthGateState extends State<AuthGate> {
             if (isAdmin) {
               // Admin user
               if (!_streamsStarted) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await FirebaseAuth.instance.currentUser?.getIdToken();
                   productController.listenToProducts();
                   productController.listenToCategories();
                   adminController.listenToUsers();
@@ -135,7 +139,8 @@ class _AuthGateState extends State<AuthGate> {
             } else {
               // Standard registered user
               if (!_streamsStarted) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  await FirebaseAuth.instance.currentUser?.getIdToken();
                   productController.listenToProducts();
                   productController.listenToCategories();
                   favoriteController.listenToFavorites(user.uid);
@@ -149,7 +154,8 @@ class _AuthGateState extends State<AuthGate> {
           } else {
             // Anonymous Guest User
             if (!_streamsStarted) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                await FirebaseAuth.instance.currentUser?.getIdToken();
                 productController.listenToProducts();
                 productController.listenToCategories();
               });

@@ -73,6 +73,8 @@ class OrderModel {
   final String? paymentReference;
   final String deliveryAddress;
   final String phone;
+  final double? deliveryLat;
+  final double? deliveryLng;
 
   OrderModel({
     required this.id,
@@ -86,11 +88,14 @@ class OrderModel {
     this.paymentReference,
     required this.deliveryAddress,
     required this.phone,
+    this.deliveryLat,
+    this.deliveryLng,
   });
 
   /// Helpers
   bool get isPending => status == 'pending';
   bool get canCancel => status == 'pending';
+  bool get hasLocation => deliveryLat != null && deliveryLng != null;
 
   /// Convert to Firestore map
   Map<String, dynamic> toMap() {
@@ -107,6 +112,8 @@ class OrderModel {
       'paymentReference': paymentReference,
       'deliveryAddress': deliveryAddress,
       'phone': phone,
+      'deliveryLat': deliveryLat,
+      'deliveryLng': deliveryLng,
     };
   }
 
@@ -138,6 +145,24 @@ class OrderModel {
       }
     }
 
+    double? deliveryLat;
+    if (map['deliveryLat'] != null) {
+      if (map['deliveryLat'] is int) {
+        deliveryLat = (map['deliveryLat'] as int).toDouble();
+      } else if (map['deliveryLat'] is double) {
+        deliveryLat = map['deliveryLat'] as double;
+      }
+    }
+
+    double? deliveryLng;
+    if (map['deliveryLng'] != null) {
+      if (map['deliveryLng'] is int) {
+        deliveryLng = (map['deliveryLng'] as int).toDouble();
+      } else if (map['deliveryLng'] is double) {
+        deliveryLng = map['deliveryLng'] as double;
+      }
+    }
+
     return OrderModel(
       id: id,
       userId: map['userId'] as String? ?? '',
@@ -150,6 +175,8 @@ class OrderModel {
       paymentReference: map['paymentReference'] as String?,
       deliveryAddress: map['deliveryAddress'] as String? ?? '',
       phone: map['phone'] as String? ?? '',
+      deliveryLat: deliveryLat,
+      deliveryLng: deliveryLng,
     );
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/cart_controller.dart';
+import '../controllers/location_controller.dart';
 import '../controllers/order_controller.dart';
 import '../models/order_model.dart';
 import '../utils/constants.dart';
@@ -9,6 +12,7 @@ import '../utils/validators.dart';
 import '../widgets/app_network_image.dart';
 import '../widgets/guest_guard.dart';
 import 'd17_payment_screen.dart';
+import 'location_picker_screen.dart';
 import 'order_confirmation_screen.dart';
 
 /// Checkout screen for placing orders
@@ -53,6 +57,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final authController = context.read<AuthController>();
     final cartController = context.read<CartController>();
     final orderController = context.read<OrderController>();
+    final locationController = context.read<LocationController>();
 
     final userId = authController.profile?.uid;
     if (userId == null) return;
@@ -88,6 +93,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       paymentMethod: _selectedPaymentMethod,
       deliveryAddress: _addressController.text.trim(),
       phone: formattedPhone,
+      deliveryLat: locationController.selectedLat,
+      deliveryLng: locationController.selectedLng,
     );
 
     if (!mounted) return;
@@ -97,6 +104,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     if (createdOrder != null) {
+      locationController.clear();
       if (_selectedPaymentMethod == 'cash_on_delivery') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
@@ -126,6 +134,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cartController = context.watch<CartController>();
+    final locationController = context.watch<LocationController>();
     final items = cartController.items;
 
     return Scaffold(
@@ -175,6 +184,160 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                         validator: Validators.phone,
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Delivery location card (optional)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Delivery Location (Optional)',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Pin your exact location on the map to assist delivery.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: locationController.isLoading
+                                  ? null
+                                  : () async {
+                                      final success =
+                                          await locationController
+                                              .useCurrentLocation();
+                                      if (!context.mounted) return;
+                                      if (!success &&
+                                          locationController.errorMessage !=
+                                              null) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              locationController.errorMessage!,
+                                            ),
+                                            action: locationController
+                                                    .isPermissionPermanentlyDenied
+                                                ? SnackBarAction(
+                                                    label: 'Settings',
+                                                    onPressed: () =>
+                                                        locationController
+                                                            .openAppSettings(),
+                                                  )
+                                                : null,
+                                          ),
+                                        );
+                                      }
+                                    },
+                              icon: locationController.isLoading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.my_location, size: 18),
+                              label: const Text('Current location'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => LocationPickerScreen(
+                                      initialLat: locationController.selectedLat,
+                                      initialLng: locationController.selectedLng,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.map, size: 18),
+                              label: const Text('Pick on map'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (locationController.hasSelection) ...[
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8.0),
+                          child: SizedBox(
+                            height: 120,
+                            child: FlutterMap(
+                              options: MapOptions(
+                                initialCenter: LatLng(
+                                  locationController.selectedLat!,
+                                  locationController.selectedLng!,
+                                ),
+                                initialZoom: 14.0,
+                                interactionOptions: const InteractionOptions(
+                                  flags: InteractiveFlag.none,
+                                ),
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'fl',
+                                ),
+                                MarkerLayer(
+                                  markers: [
+                                    Marker(
+                                      point: LatLng(
+                                        locationController.selectedLat!,
+                                        locationController.selectedLng!,
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                      child: Icon(
+                                        Icons.location_on,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SimpleAttributionWidget(
+                                  source: const Text(
+                                    'OpenStreetMap contributors',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Lat: ${locationController.selectedLat!.toStringAsFixed(4)}, Lng: ${locationController.selectedLng!.toStringAsFixed(4)}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            TextButton.icon(
+                              onPressed: () => locationController.clear(),
+                              icon: const Icon(Icons.delete_outline, size: 16),
+                              label: const Text('Remove location'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
